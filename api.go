@@ -85,7 +85,7 @@ func RequireAuthMiddleware(next http.Handler) http.HandlerFunc {
 		log.Printf("Fire RequireAuthMiddleware")
 		// chekc if the user is authenticated
 		token := r.Header.Get("Authorization")
-		if token != "Bearer token" {
+		if token != "api_key" {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}

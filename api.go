@@ -1,14 +1,10 @@
 package main
 
 import (
-	"crypto/rsa"
-	"crypto/x509"
-	"encoding/pem"
-	"fmt"
+	"encoding/json"
 	"log"
-	"math/rand"
 	"net/http"
-	"os"
+	"pprogrammingg/go_services/utils"
 )
 
 type APIServer struct {
@@ -20,20 +16,42 @@ func NewAPIServer(addr string) *APIServer {
 	return &APIServer{addr}
 }
 
+// define routes, handlers and middleware
 func (s *APIServer) Run() error {
 	router := http.NewServeMux()
 
-	// only 1 space between method and path
-	// if omitted, method is GET by default
+	// dummy route for testing
 	router.HandleFunc("GET /users/{userID}", func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Fire router handler")
 		userID := r.PathValue("userID")
 		w.Write([]byte("User ID " + userID))
 	})
 
+	// dummy route for testing
 	router.HandleFunc("/posts", func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Handling request for posts")
 		w.Write([]byte("Posts"))
+	})
+
+	// test_encrypt_decrypt
+	// 	creates and shuffles an identity array, encrypts and decrypts
+	//  as an experiment
+	router.HandleFunc("POST /test_encrypt_decrypt", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Handling request for test_encrypt_decrypt")
+		shuffledIdentityArray := utils.ShuffleArray(utils.CreateIdentityArray(10001))
+
+		// Marshal the array into JSON
+		shuffledJSON, err := json.Marshal(shuffledIdentityArray)
+		if err != nil {
+			http.Error(w, "Failed to marshal JSON", http.StatusInternalServerError)
+			return
+		}
+
+		// Set Content-Type header to application/json
+		w.Header().Set("Content-Type", "application/json")
+
+		// Write the JSON response
+		w.Write(shuffledJSON)
 	})
 
 	v1 := http.NewServeMux()
@@ -86,52 +104,4 @@ func MiddlewareChain(middlewares ...Middleware) Middleware {
 
 		return next.ServeHTTP
 	}
-}
-
-// Function to create and shuffle an array
-func createAndShuffleArray() []int {
-	// Create an array of size 10001 and assign values to each index
-	array := make([]int, 10001)
-	for i := 0; i <= 10000; i++ {
-		array[i] = i
-	}
-
-	// Shuffle the array
-	shuffleArray(array)
-
-	return array
-}
-
-// Function to shuffle an array
-func shuffleArray(array []int) {
-	for i := len(array) - 1; i > 0; i-- {
-		j := rand.Intn(i + 1)
-		array[i], array[j] = array[j], array[i]
-	}
-}
-
-func write_ecrypted_shuffled_arr() {
-
-}
-
-func loadPrivateKey() (*rsa.PrivateKey, error) {
-	// Read private key file
-	privateKeyData, err := os.ReadFile("private_key.pem")
-	if err != nil {
-		return nil, fmt.Errorf("failed to read private key file: %w", err)
-	}
-
-	// Decode PEM data
-	block, _ := pem.Decode(privateKeyData)
-	if block == nil {
-		return nil, fmt.Errorf("failed to parse PEM block containing the private key")
-	}
-
-	// Parse RSA private key
-	privateKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse private key: %w", err)
-	}
-
-	return privateKey.(*rsa.PrivateKey), nil
 }

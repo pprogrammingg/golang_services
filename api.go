@@ -4,10 +4,12 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"pprogrammingg/go_services/utils"
 	"reflect"
 )
@@ -42,6 +44,9 @@ func (s *APIServer) Run() error {
 	// 	creates and shuffles an identity array, encrypts and decrypts
 	//  as an experiment
 	router.HandleFunc("POST /encrypt_decrypt", HandleEcryptDecryptHybrid)
+
+	// decrypt message loaded to env
+	router.HandleFunc("POST /decrypt", HandleDecryptMsgFromEnv)
 
 	v1 := http.NewServeMux()
 	v1.Handle("/api/v1/", http.StripPrefix("/api/v1", router))
@@ -112,6 +117,15 @@ func HandleEcryptDecryptHybrid(w http.ResponseWriter, r *http.Request) {
 	// Encrypt JSON message
 	encryptedJSON, _ := utils.EncryptHybrid(jsonBytes, aesKey)
 
+	// Encode encrypted JSON to base64
+	encodedJSON := base64.StdEncoding.EncodeToString(encryptedJSON)
+
+	// Write encoded encrypted JSON to a file
+	if err := os.WriteFile("encrypted_json.txt", []byte(encodedJSON), 0644); err != nil {
+		http.Error(w, "Failed to write encrypted JSON to file", http.StatusInternalServerError)
+		return
+	}
+
 	// Encrypt AES key with RSA public key
 	rsaPrivateKey, err := utils.LoadPrivateKeyFromSecretFile()
 	if err != nil {
@@ -123,14 +137,41 @@ func HandleEcryptDecryptHybrid(w http.ResponseWriter, r *http.Request) {
 	rsaPublicKey := rsaPrivateKey.PublicKey
 	encryptedAESKey, _ := rsa.EncryptOAEP(sha256.New(), rand.Reader, &rsaPublicKey, aesKey, nil)
 
+	// Encode encrypted AES key to base64
+	encodedAESKey := base64.StdEncoding.EncodeToString(encryptedAESKey)
+
+	// Write encoded encrypted AES key to a file
+	if err := os.WriteFile("encrypted_aes_key.txt", []byte(encodedAESKey), 0644); err != nil {
+		http.Error(w, "Failed to write encrypted AES key to file", http.StatusInternalServerError)
+		return
+	}
 	// Send encryptedJSON and encryptedAESKey to recipient
 
 	// Decryption (recipient's side)
 	// Decrypt AES key with RSA private key
-	decryptedAESKey, _ := rsa.DecryptOAEP(sha256.New(), rand.Reader, rsaPrivateKey, encryptedAESKey, nil)
+
+	// Read encoded AES key from file
+	encodedAESKeyFromFile, err := os.ReadFile("encrypted_aes_key.txt")
+	if err != nil {
+		http.Error(w, "Failed to read encoded AES key from file", http.StatusInternalServerError)
+		return
+	}
+
+	// Decode base64-encoded AES key
+	encryptedAESKeyFromFile, err := base64.StdEncoding.DecodeString(string(encodedAESKeyFromFile))
+
+	decryptedAESKey, _ := rsa.DecryptOAEP(sha256.New(), rand.Reader, rsaPrivateKey, encryptedAESKeyFromFile, nil)
+
+	encodedEncryptedJSONFromFile, err := os.ReadFile("encrypted_json.txt")
+	if err != nil {
+		// Handle error
+	}
+
+	// Decode base64-encoded encrypted JSON
+	encryptedAESJsonFromFile, err := base64.StdEncoding.DecodeString(string(encodedEncryptedJSONFromFile))
 
 	// Decrypt JSON message with AES key
-	decryptedJSON, _ := utils.DecryptHybrid(encryptedJSON, decryptedAESKey)
+	decryptedJSON, _ := utils.DecryptHybrid(encryptedAESJsonFromFile, decryptedAESKey)
 
 	fmt.Println(string(decryptedJSON))
 
@@ -140,6 +181,47 @@ func HandleEcryptDecryptHybrid(w http.ResponseWriter, r *http.Request) {
 
 		fmt.Println("we are good!")
 	}
+
+	w.Write(decryptedJSON)
+}
+
+func HandleDecryptMsgFromEnv(w http.ResponseWriter, r *http.Request) {
+
+	// Encrypt AES key with RSA public key
+	rsaPrivateKey, err := utils.LoadPrivateKeyFromSecretFile()
+	if err != nil {
+		http.Error(w, "Failed to load private key ", http.StatusInternalServerError)
+		log.Printf("Failed to load private key: %v", err)
+		return
+	}
+
+	// Decrypt AES key with RSA private key
+
+	// Read encoded AES key from file
+	encodedAESKeyFromFile, err := os.ReadFile("/etc/secrets/enc_aes_key")
+	if err != nil {
+		http.Error(w, "Failed to read encoded AES key from file", http.StatusInternalServerError)
+		return
+	}
+
+	// Decode base64-encoded AES key
+	encryptedAESKeyFromFile, err := base64.StdEncoding.DecodeString(string(encodedAESKeyFromFile))
+
+	decryptedAESKey, _ := rsa.DecryptOAEP(sha256.New(), rand.Reader, rsaPrivateKey, encryptedAESKeyFromFile, nil)
+
+	encodedEncryptedJSONFromFile, err := os.ReadFile("/etc/secrets/enc_json")
+	if err != nil {
+		http.Error(w, "Failed to read encoded encrypted JSON message from file", http.StatusInternalServerError)
+		return
+	}
+
+	// Decode base64-encoded encrypted JSON
+	encryptedAESJsonFromFile, err := base64.StdEncoding.DecodeString(string(encodedEncryptedJSONFromFile))
+
+	// Decrypt JSON message with AES key
+	decryptedJSON, _ := utils.DecryptHybrid(encryptedAESJsonFromFile, decryptedAESKey)
+
+	fmt.Println(string(decryptedJSON))
 
 	w.Write(decryptedJSON)
 }

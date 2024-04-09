@@ -49,7 +49,8 @@ func ShuffleArray(array []int) []int {
 // reuturns tuple of pointer to the private key or error
 func LoadPrivateKeyFromSecretFile() (*rsa.PrivateKey, error) {
 	// Read private key file
-	privateKeyData, err := os.ReadFile("./etc/secrets/priv_key")
+	// privateKeyData, err := os.ReadFile("./etc/secrets/priv_key") // local
+	privateKeyData, err := os.ReadFile("/etc/secrets/priv_key")
 	if err != nil {
 		return nil, err
 	}

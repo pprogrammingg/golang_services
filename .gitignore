@@ -21,6 +21,6 @@
 go.work
 
 encrypted_aes_key.txt
-ecrypted_json.txt
+encrypted_json.txt
 
 etc/*

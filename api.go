@@ -1,10 +1,15 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"pprogrammingg/go_services/utils"
+	"reflect"
 )
 
 type APIServer struct {
@@ -36,23 +41,7 @@ func (s *APIServer) Run() error {
 	// test_encrypt_decrypt
 	// 	creates and shuffles an identity array, encrypts and decrypts
 	//  as an experiment
-	router.HandleFunc("POST /test_encrypt_decrypt", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Handling request for test_encrypt_decrypt")
-		shuffledIdentityArray := utils.ShuffleArray(utils.CreateIdentityArray(10001))
-
-		// Marshal the array into JSON
-		shuffledJSON, err := json.Marshal(shuffledIdentityArray)
-		if err != nil {
-			http.Error(w, "Failed to marshal JSON", http.StatusInternalServerError)
-			return
-		}
-
-		// Set Content-Type header to application/json
-		w.Header().Set("Content-Type", "application/json")
-
-		// Write the JSON response
-		w.Write(shuffledJSON)
-	})
+	router.HandleFunc("POST /encrypt_decrypt", HandleEcryptDecryptHybrid)
 
 	v1 := http.NewServeMux()
 	v1.Handle("/api/v1/", http.StripPrefix("/api/v1", router))
@@ -104,4 +93,53 @@ func MiddlewareChain(middlewares ...Middleware) Middleware {
 
 		return next.ServeHTTP
 	}
+}
+
+func HandleEcryptDecryptHybrid(w http.ResponseWriter, r *http.Request) {
+	// Generate AES key
+	aesKey := utils.GenerateAESKey()
+
+	// JSON message
+	shuffledIdentityArray := utils.ShuffleArray(utils.CreateIdentityArray(10001))
+
+	// Marshal the array into JSON
+	jsonBytes, err := json.Marshal(shuffledIdentityArray)
+	if err != nil {
+		http.Error(w, "Failed to marshal JSON", http.StatusInternalServerError)
+		return
+	}
+
+	// Encrypt JSON message
+	encryptedJSON, _ := utils.EncryptHybrid(jsonBytes, aesKey)
+
+	// Encrypt AES key with RSA public key
+	rsaPrivateKey, err := utils.LoadPrivateKeyFromSecretFile()
+	if err != nil {
+		http.Error(w, "Failed to load private key ", http.StatusInternalServerError)
+		log.Printf("Failed to load private key: %v", err)
+		return
+	}
+
+	rsaPublicKey := rsaPrivateKey.PublicKey
+	encryptedAESKey, _ := rsa.EncryptOAEP(sha256.New(), rand.Reader, &rsaPublicKey, aesKey, nil)
+
+	// Send encryptedJSON and encryptedAESKey to recipient
+
+	// Decryption (recipient's side)
+	// Decrypt AES key with RSA private key
+	decryptedAESKey, _ := rsa.DecryptOAEP(sha256.New(), rand.Reader, rsaPrivateKey, encryptedAESKey, nil)
+
+	// Decrypt JSON message with AES key
+	decryptedJSON, _ := utils.DecryptHybrid(encryptedJSON, decryptedAESKey)
+
+	fmt.Println(string(decryptedJSON))
+
+	if !reflect.DeepEqual(decryptedJSON, jsonBytes) {
+		fmt.Println("Decrypted JSON does not match expected JSON")
+	} else {
+
+		fmt.Println("we are good!")
+	}
+
+	w.Write(decryptedJSON)
 }

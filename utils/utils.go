@@ -25,7 +25,7 @@ func CreateIdentityArray(length int) []int {
 	// Create an array of size 10001 and assign values to each index
 	array := make([]int, length)
 	for i := 0; i < length; i++ {
-		array[i] = i
+		array[i] = i + 1
 	}
 
 	return array

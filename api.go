@@ -204,6 +204,11 @@ func HandleDecryptMsgFromEnv(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// debug
+	encodedAESKeyJSON, _ := json.Marshal(map[string]string{"encoded_aes_key": base64.StdEncoding.EncodeToString(encodedAESKeyFromFile)})
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(encodedAESKeyJSON)
+
 	// Decode base64-encoded AES key
 	encryptedAESKeyFromFile, err := base64.StdEncoding.DecodeString(string(encodedAESKeyFromFile))
 

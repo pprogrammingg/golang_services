@@ -12,7 +12,25 @@ import (
 	"os"
 	"pprogrammingg/go_services/utils"
 	"reflect"
+
+	"github.com/joho/godotenv"
 )
+
+var (
+	ENCODED_ENCRYPTED_JSON_MSG_PATH string
+	ENCODED_ENCRYPTED_AES_KEY_PATH  string
+)
+
+func init() {
+	// Load environment variables from .env file
+	if err := godotenv.Load(); err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
+
+	// Assign environment variables to package-level variables
+	ENCODED_ENCRYPTED_JSON_MSG_PATH = os.Getenv("ENCODED_ENCRYPTED_JSON_MSG_PATH")
+	ENCODED_ENCRYPTED_AES_KEY_PATH = os.Getenv("ENCODED_ENCRYPTED_AES_KEY_PATH")
+}
 
 type APIServer struct {
 	addr string
@@ -202,7 +220,7 @@ func HandleDecryptMsgFromEnv(w http.ResponseWriter, r *http.Request) {
 	// Decrypt AES key with RSA private key
 
 	// Read encoded AES key from file
-	encodedAESKeyFromFile, err := os.ReadFile("/etc/secrets/enc_aes_key")
+	encodedAESKeyFromFile, err := os.ReadFile(ENCODED_ENCRYPTED_AES_KEY_PATH)
 	if err != nil {
 		http.Error(w, "Failed to read encoded AES key from file", http.StatusInternalServerError)
 		return
@@ -218,7 +236,7 @@ func HandleDecryptMsgFromEnv(w http.ResponseWriter, r *http.Request) {
 
 	decryptedAESKey, _ := rsa.DecryptOAEP(sha256.New(), rand.Reader, rsaPrivateKey, encryptedAESKeyFromFile, nil)
 
-	encodedEncryptedJSONFromFile, err := os.ReadFile("/etc/secrets/enc_json")
+	encodedEncryptedJSONFromFile, err := os.ReadFile(ENCODED_ENCRYPTED_JSON_MSG_PATH)
 	if err != nil {
 		http.Error(w, "Failed to read encoded encrypted JSON message from file", http.StatusInternalServerError)
 		return

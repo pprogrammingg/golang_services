@@ -20,7 +20,7 @@
 # Go workspace file
 go.work
 
-encrypted_aes_key.txt
-encrypted_json.txt
-
+# env files
+.env 
 etc/*
+

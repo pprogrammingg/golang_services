@@ -101,6 +101,10 @@ func MiddlewareChain(middlewares ...Middleware) Middleware {
 }
 
 func HandleEcryptDecryptHybrid(w http.ResponseWriter, r *http.Request) {
+
+	ENCODED_ENCRYPTED_JSON_MSG_PATH := os.Getenv("ENCODED_ENCRYPTED_JSON_MSG_PATH")
+	ENCODED_ENCRYPTED_AES_KEY_PATH := os.Getenv("ENCODED_ENCRYPTED_AES_KEY_PATH")
+
 	// Generate AES key
 	aesKey := utils.GenerateAESKey()
 
@@ -121,7 +125,7 @@ func HandleEcryptDecryptHybrid(w http.ResponseWriter, r *http.Request) {
 	encodedJSON := base64.StdEncoding.EncodeToString(encryptedJSON)
 
 	// Write encoded encrypted JSON to a file
-	if err := os.WriteFile("encrypted_json.txt", []byte(encodedJSON), 0644); err != nil {
+	if err := os.WriteFile(ENCODED_ENCRYPTED_JSON_MSG_PATH, []byte(encodedJSON), 0644); err != nil {
 		http.Error(w, "Failed to write encrypted JSON to file", http.StatusInternalServerError)
 		return
 	}
@@ -141,7 +145,7 @@ func HandleEcryptDecryptHybrid(w http.ResponseWriter, r *http.Request) {
 	encodedAESKey := base64.StdEncoding.EncodeToString(encryptedAESKey)
 
 	// Write encoded encrypted AES key to a file
-	if err := os.WriteFile("encrypted_aes_key.txt", []byte(encodedAESKey), 0644); err != nil {
+	if err := os.WriteFile(ENCODED_ENCRYPTED_AES_KEY_PATH, []byte(encodedAESKey), 0644); err != nil {
 		http.Error(w, "Failed to write encrypted AES key to file", http.StatusInternalServerError)
 		return
 	}

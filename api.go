@@ -23,8 +23,11 @@ var (
 
 func init() {
 	// Load environment variables from .env file
-	if err := godotenv.Load(); err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
+	if os.Getenv("GO_ENVIRONMENT") == "local" {
+		log.Printf("detected local env")
+		if err := godotenv.Load(); err != nil {
+			log.Fatalf("Error loading .env file: %v", err)
+		}
 	}
 
 	// Assign environment variables to package-level variables

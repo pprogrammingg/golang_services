@@ -205,9 +205,9 @@ func HandleDecryptMsgFromEnv(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// debug
-	encodedAESKeyJSON, _ := json.Marshal(map[string]string{"encoded_aes_key": string(encodedAESKeyFromFile)})
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(encodedAESKeyJSON)
+	// encodedAESKeyJSON, _ := json.Marshal(map[string]string{"encoded_aes_key": string(encodedAESKeyFromFile)})
+	// w.Header().Set("Content-Type", "application/json")
+	// w.Write(encodedAESKeyJSON)
 
 	// Decode base64-encoded AES key
 	encryptedAESKeyFromFile, err := base64.StdEncoding.DecodeString(string(encodedAESKeyFromFile))
@@ -219,6 +219,11 @@ func HandleDecryptMsgFromEnv(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to read encoded encrypted JSON message from file", http.StatusInternalServerError)
 		return
 	}
+
+	// debug
+	encodedJSONMsg, _ := json.Marshal(map[string]string{"encoded_json_msg": string(encodedEncryptedJSONFromFile)})
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(encodedJSONMsg)
 
 	// Decode base64-encoded encrypted JSON
 	encryptedAESJsonFromFile, err := base64.StdEncoding.DecodeString(string(encodedEncryptedJSONFromFile))

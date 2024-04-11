@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"pprogrammingg/go_services/utils"
-	"reflect"
 	"strconv"
 
 	"github.com/joho/godotenv"
@@ -24,7 +23,6 @@ var (
 )
 
 func init() {
-	log.Printf("init of api.go")
 	// Load environment variables from .env file
 	if os.Getenv("GO_ENVIRONMENT") == "local" {
 		log.Printf("detected local env")
@@ -49,7 +47,6 @@ func NewAPIServer(addr string) *APIServer {
 
 // define routes, handlers and middleware
 func (s *APIServer) Run() error {
-	log.Printf("Run api server with front end key being '%s'", os.Getenv("FRONT_END_TO_DLT_API_KEY"))
 	router := http.NewServeMux()
 
 	// dummy route for testing
@@ -58,20 +55,6 @@ func (s *APIServer) Run() error {
 		userID := r.PathValue("userID")
 		w.Write([]byte("User ID " + userID))
 	})
-
-	// dummy route for testing
-	router.HandleFunc("/posts", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Handling request for posts")
-		w.Write([]byte("Posts"))
-	})
-
-	// test_encrypt_decrypt
-	// 	creates and shuffles an identity array, encrypts and decrypts
-	//  as an experiment
-	router.HandleFunc("POST /encrypt_decrypt", HandleEcryptDecryptHybrid)
-
-	// decrypt message loaded to env
-	router.HandleFunc("POST /decrypt", HandleDecryptMsgFromEnv)
 
 	// return nft_id  given sequence
 	router.HandleFunc("POST /make_nft_id", HandleProduceNftIdFromSequence)
@@ -126,138 +109,6 @@ func MiddlewareChain(middlewares ...Middleware) Middleware {
 
 		return next.ServeHTTP
 	}
-}
-
-func HandleEcryptDecryptHybrid(w http.ResponseWriter, r *http.Request) {
-
-	// Generate AES key
-	aesKey := utils.GenerateAESKey()
-
-	// JSON message
-	shuffledIdentityArray := utils.ShuffleArray(utils.CreateIdentityArray(10000))
-
-	// Marshal the array into JSON
-	jsonBytes, err := json.Marshal(shuffledIdentityArray)
-	if err != nil {
-		http.Error(w, "Failed to marshal JSON", http.StatusInternalServerError)
-		return
-	}
-
-	// Encrypt JSON message
-	encryptedJSON, _ := utils.EncryptHybrid(jsonBytes, aesKey)
-
-	// Encode encrypted JSON to base64
-	encodedJSON := base64.StdEncoding.EncodeToString(encryptedJSON)
-
-	// Write encoded encrypted JSON to a file
-	if err := os.WriteFile(ENCODED_ENCRYPTED_JSON_MSG_PATH, []byte(encodedJSON), 0644); err != nil {
-		http.Error(w, "Failed to write encrypted JSON to file", http.StatusInternalServerError)
-		return
-	}
-
-	// Encrypt AES key with RSA public key
-	rsaPrivateKey, err := utils.LoadPrivateKeyFromSecretFile()
-	if err != nil {
-		http.Error(w, "Failed to load private key ", http.StatusInternalServerError)
-		log.Printf("Failed to load private key: %v", err)
-		return
-	}
-
-	rsaPublicKey := rsaPrivateKey.PublicKey
-	encryptedAESKey, _ := rsa.EncryptOAEP(sha256.New(), rand.Reader, &rsaPublicKey, aesKey, nil)
-
-	// Encode encrypted AES key to base64
-	encodedAESKey := base64.StdEncoding.EncodeToString(encryptedAESKey)
-
-	// Write encoded encrypted AES key to a file
-	if err := os.WriteFile(ENCODED_ENCRYPTED_AES_KEY_PATH, []byte(encodedAESKey), 0644); err != nil {
-		http.Error(w, "Failed to write encrypted AES key to file", http.StatusInternalServerError)
-		return
-	}
-	// Send encryptedJSON and encryptedAESKey to recipient
-
-	// Decryption (recipient's side)
-	// Decrypt AES key with RSA private key
-
-	// Read encoded AES key from file
-	encodedAESKeyFromFile, err := os.ReadFile(ENCODED_ENCRYPTED_AES_KEY_PATH)
-	if err != nil {
-		http.Error(w, "Failed to read encoded AES key from file", http.StatusInternalServerError)
-		return
-	}
-
-	// Decode base64-encoded AES key
-	encryptedAESKeyFromFile, err := base64.StdEncoding.DecodeString(string(encodedAESKeyFromFile))
-
-	decryptedAESKey, _ := rsa.DecryptOAEP(sha256.New(), rand.Reader, rsaPrivateKey, encryptedAESKeyFromFile, nil)
-
-	encodedEncryptedJSONFromFile, err := os.ReadFile(ENCODED_ENCRYPTED_JSON_MSG_PATH)
-	if err != nil {
-		// Handle error
-	}
-
-	// Decode base64-encoded encrypted JSON
-	encryptedAESJsonFromFile, err := base64.StdEncoding.DecodeString(string(encodedEncryptedJSONFromFile))
-
-	// Decrypt JSON message with AES key
-	decryptedJSON, _ := utils.DecryptHybrid(encryptedAESJsonFromFile, decryptedAESKey)
-
-	fmt.Println(string(decryptedJSON))
-
-	if !reflect.DeepEqual(decryptedJSON, jsonBytes) {
-		fmt.Println("Decrypted JSON does not match expected JSON")
-	} else {
-
-		fmt.Println("we are good!")
-	}
-
-	w.Write(decryptedJSON)
-}
-
-func HandleDecryptMsgFromEnv(w http.ResponseWriter, r *http.Request) {
-
-	// Encrypt AES key with RSA public key
-	rsaPrivateKey, err := utils.LoadPrivateKeyFromSecretFile()
-	if err != nil {
-		log.Printf("Failed to load private key: %v", err)
-		http.Error(w, "Failed to load private key ", http.StatusInternalServerError)
-		return
-	}
-
-	// Decrypt AES key with RSA private key
-
-	// Read encoded AES key from file
-	encodedAESKeyFromFile, err := os.ReadFile(ENCODED_ENCRYPTED_AES_KEY_PATH)
-	if err != nil {
-		http.Error(w, "Failed to read encoded AES key from file", http.StatusInternalServerError)
-		return
-	}
-
-	// Decode base64-encoded AES key
-	encryptedAESKeyFromFile, err := base64.StdEncoding.DecodeString(string(encodedAESKeyFromFile))
-
-	decryptedAESKey, _ := rsa.DecryptOAEP(sha256.New(), rand.Reader, rsaPrivateKey, encryptedAESKeyFromFile, nil)
-
-	encodedEncryptedJSONFromFile, err := os.ReadFile(ENCODED_ENCRYPTED_JSON_MSG_PATH)
-	if err != nil {
-		http.Error(w, "Failed to read encoded encrypted JSON message from file", http.StatusInternalServerError)
-		return
-	}
-
-	// debug
-	// encodedJSONMsg, _ := json.Marshal(map[string]string{"encoded_json_msg": string(encodedEncryptedJSONFromFile)})
-	// w.Header().Set("Content-Type", "application/json")
-	// w.Write(encodedJSONMsg)
-
-	// Decode base64-encoded encrypted JSON
-	encryptedAESJsonFromFile, err := base64.StdEncoding.DecodeString(string(encodedEncryptedJSONFromFile))
-
-	// Decrypt JSON message with AES key
-	decryptedJSON, _ := utils.DecryptHybrid(encryptedAESJsonFromFile, decryptedAESKey)
-
-	fmt.Println(string(decryptedJSON))
-
-	w.Write(decryptedJSON)
 }
 
 type DecryptionResult struct {

@@ -24,6 +24,7 @@ var (
 )
 
 func init() {
+	log.Printf("init of api.go")
 	// Load environment variables from .env file
 	if os.Getenv("GO_ENVIRONMENT") == "local" {
 		log.Printf("detected local env")
@@ -48,6 +49,7 @@ func NewAPIServer(addr string) *APIServer {
 
 // define routes, handlers and middleware
 func (s *APIServer) Run() error {
+	log.Printf("Run api server with front end key being '%s'", os.Getenv("FRONT_END_TO_DLT_API_KEY"))
 	router := http.NewServeMux()
 
 	// dummy route for testing

@@ -159,8 +159,6 @@ func decrypt_msg_key() DecryptionResult {
 		return DecryptionResult{nil, err}
 	}
 
-	fmt.Println(string(decryptedJSON))
-
 	return DecryptionResult{decryptedJSON, nil}
 }
 

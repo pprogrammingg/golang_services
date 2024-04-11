@@ -3,7 +3,11 @@ API services written in GoLang
 
 # Table of Contents
 
-1. [Service List](#services)
+1. [Run Locally](#run-locally)
 
+## Run Locally
 
-# Services
+```bash
+    export GO_ENVIRONMENT=local
+    go run *.go
+```

@@ -23,6 +23,7 @@ var (
 )
 
 func init() {
+	log.Printf("api.go init")
 	// Load environment variables from .env file
 	if os.Getenv("GO_ENVIRONMENT") == "local" {
 		log.Printf("detected local env")
@@ -50,10 +51,8 @@ func (s *APIServer) Run() error {
 	router := http.NewServeMux()
 
 	// dummy route for testing
-	router.HandleFunc("GET /users/{userID}", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Fire router handler")
-		userID := r.PathValue("userID")
-		w.Write([]byte("User ID " + userID))
+	router.HandleFunc("GET /ping", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("ping : make server alive"))
 	})
 
 	// return nft_id  given sequence

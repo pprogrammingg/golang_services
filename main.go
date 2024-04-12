@@ -43,6 +43,6 @@ func myTask() {
 }
 
 func executeCronJob() {
-	gocron.Every(1).Second().Do(myTask)
+	gocron.Every(5).Minute().Do(myTask)
 	<-gocron.Start()
 }
